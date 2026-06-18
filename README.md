@@ -135,6 +135,6 @@ Spring Boot simplifica el proceso de configuración y puesta en marcha de aplica
 
 | Campo       | Detalle                      |
 |-------------|------------------------------|
-| Nombre      | *(nombre del estudiante)*    |
-| Correo      | *(correo institucional)*     |
+| Nombre      | Marco Cobos                  |
+| Correo      | marcocobos15@gmail.com       |
 | Fecha       | Junio 2026                   |
