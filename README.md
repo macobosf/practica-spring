@@ -3,12 +3,14 @@
 **Asignatura:** Programación y Plataformas Web  
 **Institución:** Universidad Politécnica Salesiana  
 **Carrera:** Ingeniería de Sistemas  
-**Grupo:** ec.edu.ups.icc   
+**Grupo:** ec.edu.ups.icc  
+**Versión del proyecto:** 0.0.1-SNAPSHOT  
+
 ---
 
 ## Descripción
 
-Este proyecto constituye el primer laboratorio de la asignatura de Programación y Plataformas Web. Su objetivo es verificar la correcta configuración del entorno de desarrollo y demostrar el funcionamiento básico de un servidor web embebido mediante la exposición de un endpoint REST de estado (`/api/status`).
+Este proyecto constituye el primer laboratorio de la asignatura de Programación y Plataformas Web. Su objetivo es verificar la correcta configuración del entorno de desarrollo y demostrar el funcionamiento básico de un servidor web embebido mediante la exposición de endpoints REST utilizando Spring Boot.
 
 ---
 
@@ -30,24 +32,52 @@ Este proyecto constituye el primer laboratorio de la asignatura de Programación
 fundamentos01/
 ├── src/
 │   └── main/
-│       └── java/
-│           └── ec/edu/ups/icc/fundamentos01/
-│               ├── Fundamentos01Application.java
-│               └── controllers/
-│                   └── StatusController.java
+│       ├── java/
+│       │   └── ec/edu/ups/icc/fundamentos01/
+│       │       ├── Fundamentos01Application.java
+│       │       ├── controllers/
+│       │       │   └── StatusController.java
+│       │       └── students/
+│       │           ├── controllers/
+│       │           │   └── StudentController.java
+│       │           └── models/
+│       │               └── Student.java
+│       └── resources/
+│           └── application.yml
 ├── build.gradle.kts
 └── settings.gradle.kts
 ```
 
 ---
 
-## Endpoint disponible
+## Configuración
 
-| Método | Ruta          | Descripción                          |
-|--------|---------------|--------------------------------------|
-| GET    | `/api/status` | Retorna el estado actual del servidor |
+El archivo `application.yml` define el puerto y el prefijo base de la API:
 
-**Ejemplo de respuesta:**
+```yaml
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: fundamentos01
+```
+
+Todos los endpoints quedan bajo el prefijo `/api`.
+
+---
+
+## Endpoints disponibles
+
+| Método | Ruta                  | Descripción                            |
+|--------|-----------------------|----------------------------------------|
+| GET    | `/api/status`         | Retorna el estado actual del servidor  |
+| GET    | `/api/students`       | Retorna la lista de estudiantes        |
+| GET    | `/api/students/count` | Retorna el total de estudiantes        |
+
+**Ejemplo de respuesta — `/api/status`:**
 
 ```json
 {
@@ -55,6 +85,15 @@ fundamentos01/
   "service": "Spring Boot API",
   "timestamp": "2026-06-18T14:52:59.860601512"
 }
+```
+
+**Ejemplo de respuesta — `/api/students`:**
+
+```json
+[
+  { "id": 1, "name": "Juan", "age": 30 },
+  { "id": 2, "name": "Diego", "age": 10 }
+]
 ```
 
 ---
@@ -75,29 +114,23 @@ El servidor inicia en el puerto `8080` de forma predeterminada.
 
 Salida del comando `java -version` en terminal, confirmando que el entorno de ejecución cumple con el requisito de Java 25.
 
-> **Captura:** *(insertar captura de pantalla)*
+![java -version](assets/Captura%20desde%202026-06-18%2015-22-13.png)
 
 ---
 
 ### 2. Servidor Spring Boot en ejecución
 
-Salida de la consola al iniciar la aplicación, donde se observa:
+Salida de la consola al iniciar la aplicación, donde se observa el banner de Spring Boot y la confirmación de que Tomcat inició en el puerto 8080.
 
-```
-:: Spring Boot ::                (v4.1.0)
-...
-Tomcat started on port 8080
-```
-
-> **Captura:** *(insertar captura de pantalla)*
+![Spring Boot corriendo](assets/Captura%20desde%202026-06-18%2016-08-11.png)
 
 ---
 
 ### 3. Endpoint `/api/status` funcionando
 
-Respuesta JSON obtenida al acceder a `http://localhost:8080/api/status` desde el navegador o cliente HTTP (Postman / Bruno).
+Respuesta JSON obtenida al acceder a `http://localhost:8080/api/status` desde el navegador.
 
-> **Captura:** *(insertar captura de pantalla)*
+![Endpoint /api/status](assets/Captura%20desde%202026-06-18%2014-55-07.png)
 
 ---
 
@@ -119,6 +152,22 @@ StatusController.java
 
 ---
 
+### 5. Endpoint `/api/students` funcionando
+
+Respuesta JSON con la lista de estudiantes registrados en memoria.
+
+![Endpoint /api/students](assets/Captura%20desde%202026-06-18%2016-11-17.png)
+
+---
+
+### 6. Endpoint `/api/students/count` funcionando
+
+Respuesta con el total de estudiantes registrados.
+
+![Endpoint /api/students/count](assets/Captura%20desde%202026-06-18%2016-11-24.png)
+
+---
+
 ## Explicación personal
 
 ### Funcionamiento del endpoint `/api/status`
@@ -133,8 +182,8 @@ Spring Boot simplifica el proceso de configuración y puesta en marcha de aplica
 
 ## Autor
 
-| Campo       | Detalle                      |
-|-------------|------------------------------|
-| Nombre      | Marco Cobos                  |
-| Correo      | marcocobos15@gmail.com       |
-| Fecha       | Junio 2026                   |
+| Campo       | Detalle                  |
+|-------------|--------------------------|
+| Nombre      | Marco Cobos              |
+| Correo      | marcocobos15@gmail.com   |
+| Fecha       | Junio 2026               |
