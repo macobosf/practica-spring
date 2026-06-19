@@ -148,8 +148,6 @@ Resultado esperado:
 StatusController.java
 ```
 
-> **Captura:** *(insertar captura de pantalla)*
-
 ---
 
 ### 5. Endpoint `/api/students` funcionando
