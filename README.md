@@ -116,7 +116,7 @@ fundamentos01/
 
 Salida del comando `java -version` en terminal, confirmando que el entorno cumple con el requisito de Java 25.
 
-![java -version](assets/Captura%20desde%202026-06-18%2015-22-13.png)
+![java -version](assets/java-version.png)
 
 ---
 
@@ -124,7 +124,7 @@ Salida del comando `java -version` en terminal, confirmando que el entorno cumpl
 
 Salida de la consola al iniciar la aplicación, donde se observa el banner de Spring Boot y la confirmación de que Tomcat inició en el puerto 8080.
 
-![Spring Boot corriendo](assets/Captura%20desde%202026-06-18%2016-08-11.png)
+![Spring Boot corriendo](assets/spring-boot-running.png)
 
 ---
 
@@ -132,7 +132,7 @@ Salida de la consola al iniciar la aplicación, donde se observa el banner de Sp
 
 Respuesta JSON obtenida al acceder a `http://localhost:8080/api/status` desde el navegador.
 
-![Endpoint /api/status](assets/Captura%20desde%202026-06-18%2014-55-07.png)
+![Endpoint /api/status](assets/status-endpoint.png)
 
 ---
 
@@ -156,7 +156,7 @@ StatusController.java
 
 Respuesta JSON con la lista de estudiantes registrados en memoria.
 
-![Endpoint /api/students](assets/Captura%20desde%202026-06-18%2016-11-17.png)
+![Endpoint /api/students](assets/students-get-all.png)
 
 ---
 
@@ -164,7 +164,7 @@ Respuesta JSON con la lista de estudiantes registrados en memoria.
 
 Respuesta con el total de estudiantes registrados.
 
-![Endpoint /api/students/count](assets/Captura%20desde%202026-06-18%2016-11-24.png)
+![Endpoint /api/students/count](assets/students-count.png)
 
 ---
 
@@ -267,7 +267,7 @@ fundamentos01/
 
 Creación de un nuevo producto enviando `name`, `price` y `stock` en el cuerpo de la petición. El servidor retorna el producto creado con su id asignado.
 
-![POST /api/products](assets/Captura%20desde%202026-06-20%2010-52-45.png)
+![POST /api/products](assets/products-post-create.png)
 
 ---
 
@@ -275,7 +275,7 @@ Creación de un nuevo producto enviando `name`, `price` y `stock` en el cuerpo d
 
 Respuesta JSON con los 3 productos registrados en memoria tras las peticiones POST previas (Laptop, Mouse, Teclado).
 
-![GET /api/products](assets/Captura%20desde%202026-06-20%2010-53-17.png)
+![GET /api/products](assets/products-get-all.png)
 
 ---
 
@@ -283,7 +283,7 @@ Respuesta JSON con los 3 productos registrados en memoria tras las peticiones PO
 
 Respuesta JSON al consultar el producto con id 2 (Mouse). El servidor retorna únicamente los datos del producto solicitado.
 
-![GET /api/products/2](assets/Captura%20desde%202026-06-20%2010-53-33.png)
+![GET /api/products/2](assets/products-get-one.png)
 
 ---
 
@@ -291,7 +291,7 @@ Respuesta JSON al consultar el producto con id 2 (Mouse). El servidor retorna ú
 
 Actualización total del producto con id 1. Se reemplazan todos los campos: el nombre cambia de `Laptop` a `Laptop Gaming`, el precio a `1850.0` y el stock a `5`.
 
-![PUT /api/products/1](assets/Captura%20desde%202026-06-20%2010-56-27.png)
+![PUT /api/products/1](assets/products-put.png)
 
 ---
 
@@ -299,7 +299,7 @@ Actualización total del producto con id 1. Se reemplazan todos los campos: el n
 
 Actualización parcial del producto con id 3. Solo se envía el campo `price` con el valor `39.99`. El nombre y el stock permanecen sin cambios.
 
-![PATCH /api/products/3](assets/Captura%20desde%202026-06-20%2010-56-18.png)
+![PATCH /api/products/3](assets/products-patch.png)
 
 ---
 
@@ -307,7 +307,7 @@ Actualización parcial del producto con id 3. Solo se envía el campo `price` co
 
 Lista actualizada de productos después de aplicar el PUT y el PATCH. Se confirma que los cambios persisten correctamente en memoria.
 
-![GET /api/products tras modificaciones](assets/Captura%20desde%202026-06-20%2010-56-12.png)
+![GET /api/products tras modificaciones](assets/products-get-all-updated.png)
 
 ---
 
@@ -323,13 +323,40 @@ Eliminación del producto con id 2 (Mouse). El servidor confirma la operación c
 
 Intento de eliminación de un producto con un id que no existe. El servidor retorna el mensaje de error `Product not found`.
 
-> **Captura:** *(insertar captura de pantalla)*
+![DELETE /api/products inexistente](assets/products-delete-not-found.png)
 
 ---
 
 ## Explicación personal — Práctica 2
 
-> *(Descripción del estudiante sobre la arquitectura en capas, el uso de DTOs, servicios e inyección de dependencias)*
+### Arquitectura en capas y uso de DTOs
+
+La Práctica 2 introduce una arquitectura en capas donde cada componente tiene una responsabilidad específica. El controlador recibe las peticiones HTTP y las delega al servicio; el servicio contiene la lógica de negocio y accede al repositorio; el repositorio gestiona el almacenamiento en memoria. Los DTOs (Data Transfer Objects) permiten separar los datos que el cliente envía de los datos que el sistema almacena internamente, evitando exponer directamente las entidades del dominio.
+
+### Manejo del timestamp con `LocalDateTime.now()`
+
+Uno de los aspectos relevantes de la práctica es el control del campo `createdAt`. Aunque el DTO de creación (`CreateProductDto`) podría recibir una fecha enviada por el cliente, el backend la ignora intencionalmente. En su lugar, el mapper asigna la fecha en el momento exacto en que se procesa la petición:
+
+```java
+// ProductMapper.java
+model.setCreatedAt(LocalDateTime.now());
+```
+
+Esto garantiza que la fecha de creación siempre sea generada por el servidor y no pueda ser manipulada externamente. Adicionalmente, el campo `createdAt` no se incluye en la respuesta (`ProductResponseDto`), lo que evita exponer información interna innecesaria al cliente.
+
+### Generación del id con contador en memoria
+
+Dado que el proyecto no utiliza base de datos, el id de cada producto se genera mediante un contador definido en el servicio. Cada vez que se crea un producto, el servicio asigna el valor actual del contador como id y luego lo incrementa en uno:
+
+```java
+// ProductServiceImpl.java
+private Long currentId = 1L;
+
+product.setId(currentId);
+currentId++;
+```
+
+Este mecanismo garantiza que cada producto tenga un identificador único durante la ejecución del servidor, aunque los datos se pierden al reiniciarlo por tratarse de almacenamiento en memoria.
 
 ---
 
