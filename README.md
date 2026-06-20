@@ -8,9 +8,9 @@
 
 ---
 
-## Descripción
+## Descripción general
 
-Este proyecto constituye el primer laboratorio de la asignatura de Programación y Plataformas Web. Su objetivo es verificar la correcta configuración del entorno de desarrollo y demostrar el funcionamiento básico de un servidor web embebido mediante la exposición de endpoints REST utilizando Spring Boot.
+Este repositorio agrupa las prácticas del primer laboratorio de la asignatura de Programación y Plataformas Web. Cada práctica amplía el proyecto con nuevas funcionalidades sobre el mismo servidor Spring Boot, el cual expone una API REST bajo el prefijo `/api`.
 
 ---
 
@@ -26,31 +26,7 @@ Este proyecto constituye el primer laboratorio de la asignatura de Programación
 
 ---
 
-## Estructura del proyecto
-
-```
-fundamentos01/
-├── src/
-│   └── main/
-│       ├── java/
-│       │   └── ec/edu/ups/icc/fundamentos01/
-│       │       ├── Fundamentos01Application.java
-│       │       ├── controllers/
-│       │       │   └── StatusController.java
-│       │       └── students/
-│       │           ├── controllers/
-│       │           │   └── StudentController.java
-│       │           └── models/
-│       │               └── Student.java
-│       └── resources/
-│           └── application.yml
-├── build.gradle.kts
-└── settings.gradle.kts
-```
-
----
-
-## Configuración
+## Configuración del servidor
 
 El archivo `application.yml` define el puerto y el prefijo base de la API:
 
@@ -69,13 +45,49 @@ Todos los endpoints quedan bajo el prefijo `/api`.
 
 ---
 
-## Endpoints disponibles
+## Ejecución del proyecto
 
-| Método | Ruta                  | Descripción                            |
-|--------|-----------------------|----------------------------------------|
-| GET    | `/api/status`         | Retorna el estado actual del servidor  |
-| GET    | `/api/students`       | Retorna la lista de estudiantes        |
-| GET    | `/api/students/count` | Retorna el total de estudiantes        |
+```bash
+./gradlew bootRun
+```
+
+---
+
+# Práctica 1 — Servidor y endpoints básicos
+
+## Objetivo
+
+Verificar la correcta configuración del entorno de desarrollo y demostrar el funcionamiento básico de un servidor web embebido mediante la exposición de endpoints REST de estado y listado de estudiantes.
+
+---
+
+## Estructura del proyecto — Práctica 1
+
+```
+fundamentos01/
+├── src/main/java/ec/edu/ups/icc/fundamentos01/
+│   ├── Fundamentos01Application.java
+│   ├── core/
+│   │   └── controllers/
+│   │       └── StatusController.java
+│   └── students/
+│       ├── controllers/
+│       │   └── StudentController.java
+│       └── models/
+│           └── Student.java
+└── src/main/resources/
+    └── application.yml
+```
+
+---
+
+## Endpoints — Práctica 1
+
+| Método | Ruta                  | Descripción                           |
+|--------|-----------------------|---------------------------------------|
+| GET    | `/api/status`         | Retorna el estado actual del servidor |
+| GET    | `/api/students`       | Retorna la lista de estudiantes       |
+| GET    | `/api/students/count` | Retorna el total de estudiantes       |
 
 **Ejemplo de respuesta — `/api/status`:**
 
@@ -98,21 +110,11 @@ Todos los endpoints quedan bajo el prefijo `/api`.
 
 ---
 
-## Ejecución del proyecto
-
-```bash
-./gradlew bootRun
-```
-
-El servidor inicia en el puerto `8080` de forma predeterminada.
-
----
-
-## Evidencias
+## Evidencias — Práctica 1
 
 ### 1. Verificación de la versión de Java
 
-Salida del comando `java -version` en terminal, confirmando que el entorno de ejecución cumple con el requisito de Java 25.
+Salida del comando `java -version` en terminal, confirmando que el entorno cumple con el requisito de Java 25.
 
 ![java -version](assets/Captura%20desde%202026-06-18%2015-22-13.png)
 
@@ -166,7 +168,7 @@ Respuesta con el total de estudiantes registrados.
 
 ---
 
-## Explicación personal
+## Explicación personal — Práctica 1
 
 ### Funcionamiento del endpoint `/api/status`
 
@@ -178,7 +180,160 @@ Spring Boot simplifica el proceso de configuración y puesta en marcha de aplica
 
 ---
 
-## Autor
+# Práctica 2 — CRUD de productos y usuarios
+
+## Objetivo
+
+Implementar operaciones CRUD completas (Create, Read, Update, Delete) sobre dos recursos — productos y usuarios — aplicando una arquitectura en capas con controladores, servicios, repositorios, entidades y DTOs.
+
+---
+
+## Estructura del proyecto — Práctica 2
+
+```
+fundamentos01/
+└── src/main/java/ec/edu/ups/icc/fundamentos01/
+    ├── products/
+    │   ├── controllers/
+    │   │   └── ProductController.java
+    │   ├── dtos/
+    │   │   ├── CreateProductDto.java
+    │   │   ├── UpdateProductDto.java
+    │   │   ├── PartialUpdateProductDto.java
+    │   │   └── ProductResponseDto.java
+    │   ├── entities/
+    │   │   └── ProductEntity.java
+    │   ├── mappers/
+    │   │   └── ProductMapper.java
+    │   ├── models/
+    │   │   └── ProductModel.java
+    │   ├── repositories/
+    │   │   └── ProductRepository.java
+    │   └── services/
+    │       ├── ProductService.java
+    │       └── ProductServiceImpl.java
+    └── users/
+        ├── controllers/
+        │   └── UserController.java
+        ├── dtos/
+        │   ├── CreateUserDto.java
+        │   ├── UpdateUserDto.java
+        │   ├── PartialUpdateUserDto.java
+        │   └── UserResponseDto.java
+        ├── entities/
+        │   └── UserEntity.java
+        ├── mappers/
+        │   └── UserMapper.java
+        ├── models/
+        │   └── UserModel.java
+        ├── repositories/
+        │   └── UserRepository.java
+        └── services/
+            ├── UserService.java
+            └── UserServiceImpl.java
+```
+
+---
+
+## Endpoints — Práctica 2
+
+### Productos
+
+| Método | Ruta                  | Descripción                              |
+|--------|-----------------------|------------------------------------------|
+| GET    | `/api/products`       | Retorna la lista de todos los productos  |
+| GET    | `/api/products/{id}`  | Retorna un producto por su id            |
+| POST   | `/api/products`       | Crea un nuevo producto                   |
+| PUT    | `/api/products/{id}`  | Actualiza completamente un producto      |
+| PATCH  | `/api/products/{id}`  | Actualiza parcialmente un producto       |
+| DELETE | `/api/products/{id}`  | Elimina un producto por su id            |
+
+### Usuarios
+
+| Método | Ruta               | Descripción                            |
+|--------|--------------------|----------------------------------------|
+| GET    | `/api/users`       | Retorna la lista de todos los usuarios |
+| GET    | `/api/users/{id}`  | Retorna un usuario por su id           |
+| POST   | `/api/users`       | Crea un nuevo usuario                  |
+| PUT    | `/api/users/{id}`  | Actualiza completamente un usuario     |
+| PATCH  | `/api/users/{id}`  | Actualiza parcialmente un usuario      |
+| DELETE | `/api/users/{id}`  | Elimina un usuario por su id           |
+
+---
+
+## Evidencias — Práctica 2
+
+### 7. POST `/api/products` — Crear producto
+
+Creación de un nuevo producto enviando `name`, `price` y `stock` en el cuerpo de la petición. El servidor retorna el producto creado con su id asignado.
+
+![POST /api/products](assets/Captura%20desde%202026-06-20%2010-52-45.png)
+
+---
+
+### 8. GET `/api/products` — Lista de productos
+
+Respuesta JSON con los 3 productos registrados en memoria tras las peticiones POST previas (Laptop, Mouse, Teclado).
+
+![GET /api/products](assets/Captura%20desde%202026-06-20%2010-53-17.png)
+
+---
+
+### 9. GET `/api/products/{id}` — Producto por id
+
+Respuesta JSON al consultar el producto con id 2 (Mouse). El servidor retorna únicamente los datos del producto solicitado.
+
+![GET /api/products/2](assets/Captura%20desde%202026-06-20%2010-53-33.png)
+
+---
+
+### 10. PUT `/api/products/{id}` — Actualización completa
+
+Actualización total del producto con id 1. Se reemplazan todos los campos: el nombre cambia de `Laptop` a `Laptop Gaming`, el precio a `1850.0` y el stock a `5`.
+
+![PUT /api/products/1](assets/Captura%20desde%202026-06-20%2010-56-27.png)
+
+---
+
+### 11. PATCH `/api/products/{id}` — Actualización parcial
+
+Actualización parcial del producto con id 3. Solo se envía el campo `price` con el valor `39.99`. El nombre y el stock permanecen sin cambios.
+
+![PATCH /api/products/3](assets/Captura%20desde%202026-06-20%2010-56-18.png)
+
+---
+
+### 12. GET `/api/products` — Lista tras modificaciones
+
+Lista actualizada de productos después de aplicar el PUT y el PATCH. Se confirma que los cambios persisten correctamente en memoria.
+
+![GET /api/products tras modificaciones](assets/Captura%20desde%202026-06-20%2010-56-12.png)
+
+---
+
+### 13. DELETE `/api/products/{id}` — Eliminar producto existente
+
+Eliminación del producto con id 2 (Mouse). El servidor confirma la operación con el mensaje `Deleted successfully`.
+
+![DELETE /api/products/2](assets/products-delete-ok.png)
+
+---
+
+### 14. DELETE `/api/products/{id}` — Eliminar producto inexistente
+
+Intento de eliminación de un producto con un id que no existe. El servidor retorna el mensaje de error `Product not found`.
+
+> **Captura:** *(insertar captura de pantalla)*
+
+---
+
+## Explicación personal — Práctica 2
+
+> *(Descripción del estudiante sobre la arquitectura en capas, el uso de DTOs, servicios e inyección de dependencias)*
+
+---
+
+# Autor
 
 | Campo       | Detalle                  |
 |-------------|--------------------------|
