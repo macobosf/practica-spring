@@ -360,6 +360,436 @@ Este mecanismo garantiza que cada producto tenga un identificador único durante
 
 ---
 
+# Práctica 3 — Persistencia con PostgreSQL y Docker
+
+## Objetivo
+
+Reemplazar el almacenamiento en memoria por una base de datos real (PostgreSQL), conectada a Spring Boot mediante JPA e Hibernate, y levantada a través de un contenedor Docker.
+
+---
+
+## 1. Dependencias agregadas
+
+Se añadieron dos dependencias en [build.gradle.kts](build.gradle.kts):
+
+```kotlin
+implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+runtimeOnly("org.postgresql:postgresql")
+testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
+```
+
+| Dependencia                        | Función                                          |
+|------------------------------------|--------------------------------------------------|
+| `spring-boot-starter-data-jpa`     | Habilita JPA, Hibernate y repositorios           |
+| `postgresql`                       | Driver para conectar Spring Boot con PostgreSQL  |
+| `spring-boot-starter-data-jpa-test`| Soporte de JPA en pruebas                        |
+
+---
+
+## 2. Configuración de la conexión en `application.yml`
+
+Se actualizó [application.yml](src/main/resources/application.yml) con los datos de conexión a PostgreSQL:
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/devdb
+    username: ups
+    password: ups123
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+```
+
+El puerto utilizado es `5433` porque el puerto `5432` está ocupado por una instalación nativa de PostgreSQL en el mismo equipo. El contenedor Docker mapea internamente el puerto `5432` al `5433` del host.
+
+| Propiedad           | Valor                                                      |
+|---------------------|------------------------------------------------------------|
+| `ddl-auto: update`  | Hibernate crea o actualiza las tablas automáticamente      |
+| `format_sql: true`  | Muestra el SQL generado de forma legible en consola        |
+| `dialect`           | Indica a Hibernate que genere SQL compatible con PostgreSQL |
+
+---
+
+## 3. Configuración de Docker
+
+### 3.1. Agregar el usuario al grupo docker
+
+Para ejecutar Docker sin `sudo`:
+
+```bash
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+### 3.2. Crear y levantar el contenedor PostgreSQL
+
+```bash
+docker run -d \
+  --name postgres-dev \
+  -e POSTGRES_USER=ups \
+  -e POSTGRES_PASSWORD=ups123 \
+  -e POSTGRES_DB=devdb \
+  -p 5433:5432 \
+  postgres:16
+```
+
+| Parámetro              | Valor       |
+|------------------------|-------------|
+| Nombre del contenedor  | postgres-dev |
+| Usuario                | ups         |
+| Contraseña             | ups123      |
+| Base de datos          | devdb       |
+| Puerto en el host      | 5433        |
+
+### 3.3. Verificar que el contenedor está activo
+
+```bash
+docker ps
+```
+
+Resultado esperado:
+
+```
+CONTAINER ID   IMAGE         PORTS                     NAMES
+f7377d627714   postgres:16   0.0.0.0:5433->5432/tcp    postgres-dev
+```
+
+![docker ps — contenedor postgres-dev activo](assets/p3-docker-ps-postgres-dev.png)
+
+---
+
+## 4. Verificación de la conexión desde Spring Boot
+
+Al ejecutar `./gradlew bootRun` con el contenedor activo, la consola debe mostrar que Hibernate inicializó correctamente:
+
+```
+HikariPool-1 - Start completed
+Hibernate: create table if not exists users (...)
+```
+
+![bootRun — conexión a PostgreSQL y arranque de Hibernate](assets/p3-bootrun-postgres-startup.png)
+
+---
+
+## 5. Estructura del proyecto — Práctica 3
+
+```
+fundamentos01/
+└── src/main/java/ec/edu/ups/icc/fundamentos01/
+    ├── core/
+    │   └── entities/
+    │       └── BaseEntity.java
+    ├── users/
+    │   ├── controllers/
+    │   │   └── UserController.java
+    │   ├── dtos/
+    │   ├── entities/
+    │   │   └── UserEntity.java
+    │   ├── mappers/
+    │   │   └── UserMapper.java
+    │   ├── models/
+    │   │   └── UserModel.java
+    │   ├── repositories/
+    │   │   └── UserRepository.java
+    │   └── services/
+    │       ├── UserService.java
+    │       └── UserServiceImpl.java
+    └── products/
+        ├── controllers/
+        │   └── ProductController.java
+        ├── dtos/
+        ├── entities/
+        │   └── ProductEntity.java
+        ├── mappers/
+        │   └── ProductMapper.java
+        ├── models/
+        │   └── ProductModel.java
+        ├── repositories/
+        │   └── ProductRepository.java
+        └── services/
+            ├── ProductService.java
+            └── ProductServiceImpl.java
+```
+
+---
+
+## 6. Superclase `BaseEntity`
+
+Se creó una clase base que centraliza los campos comunes de todas las entidades: `id`, `createdAt`, `updatedAt` y `deleted`.
+
+Archivo: [core/entities/BaseEntity.java](src/main/java/ec/edu/ups/icc/fundamentos01/core/entities/BaseEntity.java)
+
+```java
+@MappedSuperclass
+public abstract class BaseEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private boolean deleted;
+
+    @PrePersist
+    protected void onCreate() {
+        this.deleted = false;
+        this.createdAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+}
+```
+
+| Anotación           | Función                                             |
+|---------------------|-----------------------------------------------------|
+| `@MappedSuperclass` | Las entidades hijas heredan los atributos           |
+| `@Id`               | Marca el identificador principal                    |
+| `@GeneratedValue`   | El ID es generado automáticamente por la base de datos |
+| `@PrePersist`       | Asigna `createdAt` y `deleted` antes de insertar   |
+| `@PreUpdate`        | Asigna `updatedAt` antes de actualizar             |
+
+---
+
+## 7. Entidades JPA
+
+Las entidades extienden `BaseEntity` y representan las tablas en PostgreSQL.
+
+### `UserEntity`
+
+```java
+@Entity
+@Table(name = "users")
+public class UserEntity extends BaseEntity {
+
+    @Column(nullable = false, length = 150)
+    private String name;
+
+    @Column(nullable = false, unique = true, length = 150)
+    private String email;
+
+    @Column(nullable = false)
+    private String passwordHash;
+}
+```
+
+### `ProductEntity`
+
+```java
+@Entity
+@Table(name = "products")
+public class ProductEntity extends BaseEntity {
+
+    @Column(nullable = false, length = 150)
+    private String name;
+
+    @Column(nullable = false)
+    private Double price;
+
+    @Column(nullable = false)
+    private Integer stock;
+}
+```
+
+---
+
+## 8. Repositorios JPA
+
+Los repositorios reemplazan completamente las listas en memoria. Al extender `JpaRepository`, Spring Data JPA provee automáticamente los métodos `save`, `findById`, `findAll`, `delete`, entre otros.
+
+### `UserRepository`
+
+```java
+@Repository
+public interface UserRepository extends JpaRepository<UserEntity, Long> {
+    Optional<UserEntity> findByEmail(String email);
+}
+```
+
+### `ProductRepository`
+
+```java
+@Repository
+public interface ProductRepository extends JpaRepository<ProductEntity, Long> {
+}
+```
+
+---
+
+## 9. Actualización de los mappers
+
+Se agregaron métodos para convertir entre entidades y modelos.
+
+| Método               | Conversión                          |
+|----------------------|-------------------------------------|
+| `toModelFromDTO`     | `CreateDto` → `Model`               |
+| `toModelFromEntity`  | `Entity` → `Model`                  |
+| `toEntityFromModel`  | `Model` → `Entity`                  |
+| `toResponse`         | `Model` → `ResponseDto`             |
+
+Ejemplo en `UserMapper`:
+
+```java
+public static UserModel toModelFromEntity(UserEntity entity) {
+    UserModel model = new UserModel();
+    model.setId(entity.getId());
+    model.setName(entity.getName());
+    model.setEmail(entity.getEmail());
+    model.setPasswordHash(entity.getPasswordHash());
+    model.setCreatedAt(entity.getCreatedAt());
+    model.setUpdatedAt(entity.getUpdatedAt());
+    model.setDeleted(entity.isDeleted());
+    return model;
+}
+```
+
+---
+
+## 10. Actualización de los servicios
+
+### Cambios en la interfaz
+
+Los métodos ya no retornan `Object`. El método `delete` ahora retorna `void`.
+
+```java
+public interface UserService {
+    List<UserResponseDto> findAll();
+    UserResponseDto findOne(Long id);
+    UserResponseDto create(CreateUserDto dto);
+    UserResponseDto update(Long id, UpdateUserDto dto);
+    UserResponseDto partialUpdate(Long id, PartialUpdateUserDto dto);
+    void delete(Long id);
+}
+```
+
+### Cambios en la implementación
+
+Se eliminó la lista en memoria y el contador manual de IDs:
+
+```java
+// Eliminado:
+private List<UserModel> users = new ArrayList<>();
+private Long currentId = 1L;
+
+// Reemplazado por:
+private final UserRepository userRepository;
+```
+
+El flujo de creación ahora sigue la cadena completa:
+
+```java
+UserModel model = UserMapper.toModelFormDTO(dto);
+UserEntity entity = UserMapper.toEntityFromModel(model);
+UserEntity savedEntity = userRepository.save(entity);
+UserModel savedModel = UserMapper.toModelFromEntity(savedEntity);
+return UserMapper.toResponse(savedModel);
+```
+
+### Eliminación lógica
+
+El método `delete` ya no elimina el registro de la base de datos. En su lugar, marca el campo `deleted = true`:
+
+```java
+entity.setDeleted(true);
+userRepository.save(entity);
+```
+
+---
+
+## Evidencias — Práctica 3
+
+### 15. Contenedor Docker en ejecución
+
+Salida del comando `docker ps` confirmando que el contenedor `postgres-dev` está activo en el puerto `5433` del host.
+
+![docker ps — contenedor postgres-dev activo](assets/p3-docker-ps-postgres-dev.png)
+
+---
+
+### 16. Arranque de Spring Boot con PostgreSQL
+
+Consola del comando `./gradlew bootRun` mostrando que Hibernate detectó los repositorios JPA, estableció el pool de conexiones (`HikariPool-1 - Start completed`) y que Tomcat inició correctamente en el puerto `8080`.
+
+![bootRun — conexión a PostgreSQL y arranque de Hibernate](assets/p3-bootrun-postgres-startup.png)
+
+---
+
+### 17. POST `/api/products` — Crear producto persistido
+
+Creación del quinto producto ("Audifonos Sony") mediante una petición POST. El servidor retorna el objeto con el `id: 5` asignado por PostgreSQL mediante `IDENTITY`, confirmando que el dato fue almacenado en la base de datos.
+
+![POST /api/products — Audifonos Sony persistido](assets/p3-products-post-create.png)
+
+---
+
+### 18. GET `/api/products` — Lista completa desde PostgreSQL
+
+Listado de los cinco productos creados durante las pruebas. Los datos provienen directamente de la tabla `products` en PostgreSQL, no de memoria.
+
+![GET /api/products — cinco productos desde base de datos](assets/p3-products-get-all.png)
+
+---
+
+### 19. GET `/api/products/{id}` — Consulta de producto por id
+
+Consulta del producto con `id: 2` (Mouse Logitech). El servidor recupera el registro desde PostgreSQL y retorna únicamente los campos expuestos en el DTO de respuesta.
+
+![GET /api/products/2 — Mouse Logitech desde base de datos](assets/p3-products-get-one.png)
+
+---
+
+### 20. POST `/api/users` — Crear usuario persistido
+
+Creación del tercer usuario ("Ana Torres") mediante una petición POST. El `id: 3` es asignado por PostgreSQL, y la contraseña no se devuelve en la respuesta por estar excluida del `UserResponseDto`.
+
+![POST /api/users — Ana Torres persistida](assets/p3-users-post-create.png)
+
+---
+
+### 21. GET `/api/users/{id}` — Consulta de usuario por id
+
+Consulta del usuario con `id: 1` (Marco Cobos). El servidor recupera el registro desde la tabla `users` y retorna los campos `id`, `name` y `email`.
+
+![GET /api/users/1 — Marco Cobos desde base de datos](assets/p3-users-get-one.png)
+
+---
+
+### 22. GET `/api/users` — Lista completa de usuarios
+
+Listado de los tres usuarios registrados (Marco Cobos, Juan Pérez, Ana Torres). Se confirma que todos los registros persisten correctamente en PostgreSQL entre peticiones.
+
+![GET /api/users — tres usuarios desde base de datos](assets/p3-users-get-all.png)
+
+---
+
+## Explicación personal — Práctica 3
+
+### Base de datos PostgreSQL con Docker
+
+Hasta la Práctica 2, los datos se almacenaban en listas que vivían únicamente mientras el servidor estaba en ejecución: al detenerlo, todo se perdía. En la Práctica 3 se introdujo PostgreSQL como base de datos relacional, lo que permite que los registros de productos y usuarios persistan de forma permanente entre reinicios del servidor.
+
+Para levantar PostgreSQL sin interferir con la instalación nativa del sistema (que ya ocupaba el puerto `5432`), se utilizó Docker. Docker permite ejecutar PostgreSQL en un contenedor aislado, como si fuera un proceso independiente del sistema operativo. El contenedor se configuró con el puerto `5433` en el host apuntando al puerto `5432` interno del contenedor, evitando conflictos. Esto resulta especialmente conveniente en entornos de desarrollo, ya que el contenedor puede iniciarse y detenerse con un solo comando sin afectar al resto del sistema.
+
+### JPA e Hibernate como puente entre Java y la base de datos
+
+La conexión entre Spring Boot y PostgreSQL se establece a través de JPA (Java Persistence API) e Hibernate. JPA es una especificación que define cómo deben mapearse los objetos Java a tablas relacionales; Hibernate es la implementación que Spring Boot utiliza por defecto para cumplir esa especificación.
+
+Con la anotación `@Entity`, una clase Java queda vinculada a una tabla en la base de datos. Con `@GeneratedValue(strategy = GenerationType.IDENTITY)`, se delega en PostgreSQL la responsabilidad de generar el `id` de forma automática e incremental, eliminando la necesidad del contador manual que se usaba en la Práctica 2. Los callbacks `@PrePersist` y `@PreUpdate` en `BaseEntity` permiten que campos como `createdAt` y `updatedAt` sean asignados automáticamente por Hibernate en el momento en que se ejecuta la operación, sin intervención del desarrollador.
+
+La propiedad `ddl-auto: update` instruye a Hibernate para que cree o actualice las tablas al arrancar la aplicación si no existen o si su estructura cambió, lo que simplifica enormemente el ciclo de desarrollo.
+
+---
+
+---
+
 # Autor
 
 | Campo       | Detalle                  |

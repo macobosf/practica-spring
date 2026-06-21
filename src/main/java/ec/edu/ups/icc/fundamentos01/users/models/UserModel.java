@@ -3,23 +3,14 @@ package ec.edu.ups.icc.fundamentos01.users.models;
 import java.time.LocalDateTime;
 
 public class UserModel {
+
     private Long id;
     private String name;
     private String email;
     private LocalDateTime createdAt;
-
-    /**
-     * Contraseña recibida desde la API.
-     *
-     * Se usa temporalmente antes de generar el passwordHash.
-     */
+    private LocalDateTime updatedAt;
+    private boolean deleted;
     private String password;
-
-    /**
-     * Contraseña encriptada.
-     *
-     * Es el valor que posteriormente puede guardarse en la entidad.
-     */
     private String passwordHash;
 
     public UserModel() {
@@ -65,6 +56,22 @@ public class UserModel {
         this.createdAt = createdAt;
     }
 
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public boolean isDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(boolean deleted) {
+        this.deleted = deleted;
+    }
+
     public String getPassword() {
         return password;
     }
@@ -80,5 +87,4 @@ public class UserModel {
     public void setPasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
     }
-
 }

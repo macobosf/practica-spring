@@ -1,25 +1,39 @@
-package ec.edu.ups.icc.fundamentos01.products.models;
+package ec.edu.ups.icc.fundamentos01.core.entities;
 
 import java.time.LocalDateTime;
 
-public class ProductModel {
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 
+@MappedSuperclass
+public abstract class BaseEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String name;
-    private Double price;
-    private Integer stock;
+
     private LocalDateTime createdAt;
+
     private LocalDateTime updatedAt;
+
     private boolean deleted;
 
-    public ProductModel() {
+    @PrePersist
+    protected void onCreate() {
+        this.deleted = false;
+        this.createdAt = LocalDateTime.now();
     }
 
-    public ProductModel(Long id, String name, Double price, Integer stock) {
-        this.id = id;
-        this.name = name;
-        this.price = price;
-        this.stock = stock;
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public BaseEntity() {
     }
 
     public Long getId() {
@@ -28,30 +42,6 @@ public class ProductModel {
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public Double getPrice() {
-        return price;
-    }
-
-    public void setPrice(Double price) {
-        this.price = price;
-    }
-
-    public Integer getStock() {
-        return stock;
-    }
-
-    public void setStock(Integer stock) {
-        this.stock = stock;
     }
 
     public LocalDateTime getCreatedAt() {

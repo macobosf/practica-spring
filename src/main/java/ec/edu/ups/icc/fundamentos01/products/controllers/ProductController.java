@@ -18,12 +18,6 @@ import ec.edu.ups.icc.fundamentos01.products.dtos.ProductResponseDto;
 import ec.edu.ups.icc.fundamentos01.products.dtos.UpdateProductDto;
 import ec.edu.ups.icc.fundamentos01.products.services.ProductService;
 
-/*
- * Controlador REST encargado de exponer los endpoints HTTP
- * para la gestión de productos.
- *
- * No contiene lógica de negocio, delega todo al servicio.
- */
 @RestController
 @RequestMapping("/products")
 public class ProductController {
@@ -34,55 +28,37 @@ public class ProductController {
         this.service = service;
     }
 
-    /*
-     * GET /products
-     */
     @GetMapping
     public List<ProductResponseDto> findAll() {
         return service.findAll();
     }
 
-    /*
-     * GET /products/{id}
-     */
     @GetMapping("/{id}")
-    public Object findOne(@PathVariable Long id) {
+    public ProductResponseDto findOne(@PathVariable Long id) {
         return service.findOne(id);
     }
 
-    /*
-     * POST /products
-     */
     @PostMapping
     public ProductResponseDto create(@RequestBody CreateProductDto dto) {
         return service.create(dto);
     }
 
-    /*
-     * PUT /products/{id}
-     */
     @PutMapping("/{id}")
-    public Object update(
+    public ProductResponseDto update(
             @PathVariable Long id,
             @RequestBody UpdateProductDto dto) {
         return service.update(id, dto);
     }
 
-    /*
-     * PATCH /products/{id}
-     */
     @PatchMapping("/{id}")
-    public Object partialUpdate(
+    public ProductResponseDto partialUpdate(
             @PathVariable Long id,
             @RequestBody PartialUpdateProductDto dto) {
         return service.partialUpdate(id, dto);
     }
 
-    /*
-     * DELETE /products/{id}
-     */
     @DeleteMapping("/{id}")
-    public Object delete(@PathVariable Long id) {
-        return service.delete(id);
+    public void delete(@PathVariable Long id) {
+        service.delete(id);
     }
 }
