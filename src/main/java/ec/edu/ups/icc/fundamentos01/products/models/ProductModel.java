@@ -2,6 +2,12 @@ package ec.edu.ups.icc.fundamentos01.products.models;
 
 import java.time.LocalDateTime;
 
+import ec.edu.ups.icc.fundamentos01.products.dtos.CreateProductDto;
+import ec.edu.ups.icc.fundamentos01.products.dtos.PartialUpdateProductDto;
+import ec.edu.ups.icc.fundamentos01.products.dtos.ProductResponseDto;
+import ec.edu.ups.icc.fundamentos01.products.dtos.UpdateProductDto;
+import ec.edu.ups.icc.fundamentos01.products.entities.ProductEntity;
+
 public class ProductModel {
 
     private Long id;
@@ -20,6 +26,85 @@ public class ProductModel {
         this.name = name;
         this.price = price;
         this.stock = stock;
+    }
+
+    /*
+     * Construye un ProductModel desde un CreateProductDto.
+     *
+     * Se usa al crear un nuevo producto desde la API.
+     */
+    public static ProductModel fromDto(CreateProductDto dto) {
+        ProductModel model = new ProductModel();
+        model.setName(dto.getName());
+        model.setPrice(dto.getPrice());
+        model.setStock(dto.getStock());
+        return model;
+    }
+
+    /*
+     * Construye un ProductModel desde una ProductEntity.
+     *
+     * Se usa cuando el repositorio devuelve datos desde PostgreSQL.
+     */
+    public static ProductModel fromEntity(ProductEntity entity) {
+        ProductModel model = new ProductModel();
+        model.setId(entity.getId());
+        model.setName(entity.getName());
+        model.setPrice(entity.getPrice());
+        model.setStock(entity.getStock());
+        model.setCreatedAt(entity.getCreatedAt());
+        model.setUpdatedAt(entity.getUpdatedAt());
+        model.setDeleted(entity.isDeleted());
+        return model;
+    }
+
+    /*
+     * Convierte el ProductModel a ProductEntity para persistir en PostgreSQL.
+     */
+    public ProductEntity toEntity() {
+        ProductEntity entity = new ProductEntity();
+        entity.setName(this.name);
+        entity.setPrice(this.price);
+        entity.setStock(this.stock);
+        return entity;
+    }
+
+    /*
+     * Convierte el ProductModel a ProductResponseDto para la respuesta al cliente.
+     *
+     * No expone createdAt ni campos internos.
+     */
+    public ProductResponseDto toResponseDto() {
+        ProductResponseDto response = new ProductResponseDto();
+        response.setId(this.id);
+        response.setName(this.name);
+        response.setPrice(this.price);
+        response.setStock(this.stock);
+        return response;
+    }
+
+    /*
+     * Actualiza completamente el modelo con los datos del UpdateProductDto (PUT).
+     */
+    public void update(UpdateProductDto dto) {
+        this.name = dto.getName();
+        this.price = dto.getPrice();
+        this.stock = dto.getStock();
+    }
+
+    /*
+     * Actualiza parcialmente el modelo con los campos no nulos del DTO (PATCH).
+     */
+    public void partialUpdate(PartialUpdateProductDto dto) {
+        if (dto.getName() != null) {
+            this.name = dto.getName();
+        }
+        if (dto.getPrice() != null) {
+            this.price = dto.getPrice();
+        }
+        if (dto.getStock() != null) {
+            this.stock = dto.getStock();
+        }
     }
 
     public Long getId() {

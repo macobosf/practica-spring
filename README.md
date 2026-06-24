@@ -8,6 +8,20 @@
 
 ---
 
+## Índice
+
+- [Descripción general](#descripción-general)
+- [Tecnologías utilizadas](#tecnologías-utilizadas)
+- [Configuración del servidor](#configuración-del-servidor)
+- [Ejecución del proyecto](#ejecución-del-proyecto)
+- [Práctica 1 — Servidor y endpoints básicos](#práctica-1--servidor-y-endpoints-básicos)
+- [Práctica 2 — CRUD de productos y usuarios](#práctica-2--crud-de-productos-y-usuarios)
+- [Práctica 3 — Persistencia con PostgreSQL y Docker](#práctica-3--persistencia-con-postgresql-y-docker)
+- [Práctica 6 — Validación de DTOs y control de datos de entrada](#práctica-6--validación-de-dtos-y-control-de-datos-de-entrada)
+- [Autor](#autor)
+
+---
+
 ## Descripción general
 
 Este repositorio agrupa las prácticas del primer laboratorio de la asignatura de Programación y Plataformas Web. Cada práctica amplía el proyecto con nuevas funcionalidades sobre el mismo servidor Spring Boot, el cual expone una API REST bajo el prefijo `/api`.
@@ -787,6 +801,165 @@ Con la anotación `@Entity`, una clase Java queda vinculada a una tabla en la ba
 La propiedad `ddl-auto: update` instruye a Hibernate para que cree o actualice las tablas al arrancar la aplicación si no existen o si su estructura cambió, lo que simplifica enormemente el ciclo de desarrollo.
 
 ---
+
+# Práctica 6 — Validación de DTOs y control de datos de entrada
+
+## Objetivo
+
+Agregar validación de datos de entrada usando Jakarta Validation, protegiendo la API antes de que los datos lleguen al servicio o a la base de datos. Se aplican reglas de formato en los DTOs y reglas de negocio en los servicios.
+
+---
+
+## Lo que se implementó
+
+### 1. Validaciones en DTOs de productos
+
+Se agregaron anotaciones de Jakarta Validation en los tres DTOs de entrada del módulo `products`:
+
+| DTO                      | Campo   | Reglas aplicadas                              |
+|--------------------------|---------|-----------------------------------------------|
+| `CreateProductDto`       | `name`  | `@NotBlank`, `@Size(min=3, max=150)`          |
+| `CreateProductDto`       | `price` | `@NotNull`, `@DecimalMin("0.0")`              |
+| `CreateProductDto`       | `stock` | `@NotNull`, `@Min(0)`                         |
+| `UpdateProductDto`       | todos   | Mismas reglas que Create (todos obligatorios) |
+| `PartialUpdateProductDto`| todos   | `@Size`, `@DecimalMin`, `@Min` (sin `@NotNull`) |
+
+La diferencia entre `UpdateProductDto` y `PartialUpdateProductDto` es que en PATCH los campos son opcionales — solo se validan si el cliente los envía.
+
+---
+
+### 2. Activación de `@Valid` en los controladores
+
+Se agregó `@Valid` antes de `@RequestBody` en todos los endpoints que reciben un DTO:
+
+```java
+// ProductController.java
+@PostMapping
+public ProductResponseDto create(@Valid @RequestBody CreateProductDto dto) { ... }
+
+@PutMapping("/{id}")
+public ProductResponseDto update(@PathVariable Long id, @Valid @RequestBody UpdateProductDto dto) { ... }
+
+@PatchMapping("/{id}")
+public ProductResponseDto partialUpdate(@PathVariable Long id, @Valid @RequestBody PartialUpdateProductDto dto) { ... }
+```
+
+Sin `@Valid`, Spring ignoraría completamente las anotaciones del DTO y los datos inválidos pasarían al servicio sin ser verificados.
+
+---
+
+### 3. Modelo de dominio con factory methods
+
+Se refactorizó `ProductModel` para que el dominio sepa construirse y convertirse sin depender del mapper externo:
+
+| Método                        | Descripción                                      |
+|-------------------------------|--------------------------------------------------|
+| `ProductModel.fromDto(dto)`   | Construye el modelo desde un `CreateProductDto`  |
+| `ProductModel.fromEntity(e)`  | Construye el modelo desde una `ProductEntity`    |
+| `model.toEntity()`            | Convierte el modelo a `ProductEntity`            |
+| `model.toResponseDto()`       | Convierte el modelo a `ProductResponseDto`       |
+| `model.update(dto)`           | Aplica los cambios de un `UpdateProductDto`      |
+| `model.partialUpdate(dto)`    | Aplica solo los campos no nulos del DTO          |
+
+---
+
+### 4. Reglas de negocio en `ProductServiceImpl`
+
+Se implementaron validaciones de negocio que van más allá del formato de los datos:
+
+| Método          | Regla aplicada                                               |
+|-----------------|--------------------------------------------------------------|
+| `findAll`       | Filtra productos con `deleted = true` — no se devuelven      |
+| `findOne`       | Lanza error si el producto existe pero está marcado como eliminado |
+| `update`        | Lanza error si se intenta actualizar un producto eliminado   |
+| `partialUpdate` | Lanza error si se intenta actualizar un producto eliminado   |
+| `delete`        | Lanza error si el producto ya fue eliminado previamente      |
+
+---
+
+### 5. Validación de email duplicado en usuarios
+
+En `UserServiceImpl.create` se agregó una validación de negocio que impide registrar dos usuarios con el mismo email:
+
+```java
+if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
+    throw new IllegalStateException("Email already registered");
+}
+```
+
+---
+
+## Evidencias — Práctica 6
+
+### 23. POST `/api/products` — precio negativo rechazado
+
+Petición con `price: -5`. Spring Boot detiene la ejecución antes de llegar al servicio y retorna `400 Bad Request`.
+
+![Validación precio negativo](assets/p6-validation-price-negative.png)
+
+---
+
+### 24. POST `/api/products` — stock negativo rechazado
+
+Petición con `stock: -1`. La anotación `@Min(0)` en el DTO rechaza el valor antes de procesar la petición.
+
+![Validación stock negativo](assets/p6-validation-stock-negative.png)
+
+---
+
+### 25. POST `/api/products` — nombre vacío rechazado
+
+Petición con `name: ""`. La anotación `@NotBlank` impide que un nombre vacío llegue al servicio.
+
+![Validación nombre vacío](assets/p6-validation-name-empty.png)
+
+---
+
+### 26. POST `/api/products` — nombre muy corto rechazado
+
+Petición con `name: "A"`. La anotación `@Size(min=3)` rechaza nombres con menos de 3 caracteres.
+
+![Validación nombre corto](assets/p6-validation-name-short.png)
+
+---
+
+### 27. POST `/api/products` — producto válido creado
+
+Petición con datos válidos (`name: "Laptop Dell"`, `price: 1200.0`, `stock: 10`). El servidor retorna `200 OK` con el producto creado y su `id: 3` asignado por PostgreSQL.
+
+![Producto válido creado](assets/p6-create-valid.png)
+
+---
+
+### 28. PUT `/api/products/{id}` — error al actualizar producto eliminado
+
+Intento de actualización de un producto que fue eliminado lógicamente. El servicio lanza `IllegalStateException: Cannot update a deleted product` y el servidor retorna un error `500`.
+
+![Error actualizar producto eliminado](assets/p6-update-deleted-error.png)
+
+---
+
+### 29. GET `/api/products` — productos eliminados no aparecen
+
+Lista de productos después de haber eliminado algunos registros. El `findAll` filtra los productos con `deleted = true` y solo devuelve los activos (`id: 3`, `id: 4`, `id: 6`).
+
+![findAll excluye eliminados](assets/p6-findall-excludes-deleted.png)
+
+---
+
+## Explicación personal — Práctica 6
+
+### Por qué validar en el DTO y no en el servicio
+
+La validación en el DTO actúa como primera línea de defensa: verifica que los datos tienen el formato correcto antes de que lleguen al servicio. Esto separa responsabilidades — el DTO se encarga del formato, el servicio se encarga de la lógica de negocio. Si se validara todo en el servicio, este acumularía demasiadas responsabilidades y el código sería más difícil de mantener.
+
+### Diferencia entre `@NotBlank` y `@NotNull`
+
+`@NotBlank` aplica únicamente a `String` y rechaza tanto valores `null` como cadenas vacías o con solo espacios. `@NotNull` aplica a cualquier tipo y solo rechaza `null`. Para campos numéricos como `price` y `stock` se usa `@NotNull` combinado con `@DecimalMin` o `@Min`, ya que `@NotBlank` no funciona con `Double` ni `Integer`.
+
+### Eliminación lógica vs eliminación física
+
+En lugar de borrar el registro de la base de datos, el campo `deleted` se marca como `true`. Esto permite mantener el historial de datos, recuperar registros si fuera necesario y evitar problemas de integridad referencial. La API filtra estos registros en `findAll` y rechaza operaciones sobre ellos, haciendo que desde el cliente el producto "no exista", pero el dato se conserva en PostgreSQL.
 
 ---
 
