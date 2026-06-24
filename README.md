@@ -939,7 +939,23 @@ Intento de actualización de un producto que fue eliminado lógicamente. El serv
 
 ---
 
-### 29. GET `/api/products` — productos eliminados no aparecen
+### 29. POST `/api/users` — email duplicado rechazado
+
+Intento de registro con un email que ya existe en la base de datos. El servicio lanza `IllegalStateException: Email already registered` antes de intentar guardar en PostgreSQL.
+
+![Error email duplicado](assets/p6-users-email-duplicado.png)
+
+---
+
+### 30. POST `/api/users` — datos inválidos rechazados
+
+Petición con `name: ""`, `email: "correo-invalido"` y `password: "123"`. Spring Boot retorna `400 Bad Request` por las anotaciones `@NotBlank`, `@Email` y `@Size` del `CreateUserDto`.
+
+![Error datos inválidos usuario](assets/p6-users-datos-invalidos.png)
+
+---
+
+### 31. GET `/api/products` — productos eliminados no aparecen
 
 Lista de productos después de haber eliminado algunos registros. El `findAll` filtra los productos con `deleted = true` y solo devuelve los activos (`id: 3`, `id: 4`, `id: 6`).
 
