@@ -6,14 +6,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-/*
- * DTO para recibir los datos al crear un producto.
- *
- * Solo contiene los campos que el cliente debe enviar.
- * - createdAt: el cliente puede enviarlo, pero el backend lo ignora.
- *   En el mapper se asigna con LocalDateTime.now() para evitar manipulación.
- *   Ejemplo en el mapper: model.setCreatedAt(LocalDateTime.now());
- */
 public class CreateProductDto {
 
     @NotBlank(message = "El nombre es obligatorio")
@@ -21,20 +13,28 @@ public class CreateProductDto {
     private String name;
 
     @NotNull(message = "El precio es obligatorio")
-    @DecimalMin(value = "0.0", message = "El precio no puede ser negativo")
+    @DecimalMin(value = "0.0", inclusive = true, message = "El precio no puede ser negativo")
     private Double price;
 
     @NotNull(message = "El stock es obligatorio")
     @Min(value = 0, message = "El stock no puede ser negativo")
     private Integer stock;
 
+    @NotNull(message = "El ID del usuario es obligatorio")
+    private Long userId;
+
+    @NotNull(message = "El ID de la categoría es obligatorio")
+    private Long categoryId;
+
     public CreateProductDto() {
     }
 
-    public CreateProductDto(String name, Double price, Integer stock) {
+    public CreateProductDto(String name, Double price, Integer stock, Long userId, Long categoryId) {
         this.name = name;
         this.price = price;
         this.stock = stock;
+        this.userId = userId;
+        this.categoryId = categoryId;
     }
 
     public String getName() {
@@ -59,5 +59,21 @@ public class CreateProductDto {
 
     public void setStock(Integer stock) {
         this.stock = stock;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public Long getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(Long categoryId) {
+        this.categoryId = categoryId;
     }
 }

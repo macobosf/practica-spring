@@ -9,19 +9,22 @@ public class PartialUpdateProductDto {
     @Size(min = 3, max = 150, message = "El nombre debe tener entre 3 y 150 caracteres")
     private String name;
 
-    @DecimalMin(value = "0.0", message = "El precio no puede ser negativo")
+    @DecimalMin(value = "0.0", inclusive = true, message = "El precio no puede ser negativo")
     private Double price;
 
     @Min(value = 0, message = "El stock no puede ser negativo")
     private Integer stock;
 
+    private Long categoryId;
+
     public PartialUpdateProductDto() {
     }
 
-    public PartialUpdateProductDto(String name, Double price, Integer stock) {
+    public PartialUpdateProductDto(String name, Double price, Integer stock, Long categoryId) {
         this.name = name;
         this.price = price;
         this.stock = stock;
+        this.categoryId = categoryId;
     }
 
     public String getName() {
@@ -46,5 +49,13 @@ public class PartialUpdateProductDto {
 
     public void setStock(Integer stock) {
         this.stock = stock;
+    }
+
+    public Long getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(Long categoryId) {
+        this.categoryId = categoryId;
     }
 }

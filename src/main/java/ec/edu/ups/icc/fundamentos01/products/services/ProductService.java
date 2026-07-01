@@ -7,10 +7,6 @@ import ec.edu.ups.icc.fundamentos01.products.dtos.PartialUpdateProductDto;
 import ec.edu.ups.icc.fundamentos01.products.dtos.ProductResponseDto;
 import ec.edu.ups.icc.fundamentos01.products.dtos.UpdateProductDto;
 
-/*
- * Interfaz que define las operaciones disponibles
- * para la gestión de productos.
- */
 public interface ProductService {
 
     List<ProductResponseDto> findAll();
@@ -24,4 +20,8 @@ public interface ProductService {
     ProductResponseDto partialUpdate(Long id, PartialUpdateProductDto dto);
 
     void delete(Long id);
+
+    List<ProductResponseDto> findByUserId(Long userId);
+
+    List<ProductResponseDto> findByCategoryId(Long categoryId);
 }
