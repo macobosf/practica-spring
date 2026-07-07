@@ -1,7 +1,9 @@
 package ec.edu.ups.icc.fundamentos01.products.models;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
+import ec.edu.ups.icc.fundamentos01.categories.entities.CategoryEntity;
 import ec.edu.ups.icc.fundamentos01.products.dtos.CreateProductDto;
 import ec.edu.ups.icc.fundamentos01.products.dtos.PartialUpdateProductDto;
 import ec.edu.ups.icc.fundamentos01.products.dtos.ProductResponseDto;
@@ -14,6 +16,7 @@ public class ProductModel {
     private String name;
     private Double price;
     private Integer stock;
+    private List<CategoryEntity> categories;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private boolean deleted;
@@ -52,6 +55,7 @@ public class ProductModel {
         model.setName(entity.getName());
         model.setPrice(entity.getPrice());
         model.setStock(entity.getStock());
+        model.setCategories(entity.getCategories().stream().toList());
         model.setCreatedAt(entity.getCreatedAt());
         model.setUpdatedAt(entity.getUpdatedAt());
         model.setDeleted(entity.isDeleted());
@@ -137,6 +141,14 @@ public class ProductModel {
 
     public void setStock(Integer stock) {
         this.stock = stock;
+    }
+
+    public List<CategoryEntity> getCategories() {
+        return categories;
+    }
+
+    public void setCategories(List<CategoryEntity> categories) {
+        this.categories = categories;
     }
 
     public LocalDateTime getCreatedAt() {
