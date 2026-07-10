@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Slice;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -22,6 +23,7 @@ import ec.edu.ups.icc.fundamentos01.products.dtos.PartialUpdateProductDto;
 import ec.edu.ups.icc.fundamentos01.products.dtos.ProductResponseDto;
 import ec.edu.ups.icc.fundamentos01.products.dtos.UpdateProductDto;
 import ec.edu.ups.icc.fundamentos01.products.services.ProductService;
+import ec.edu.ups.icc.fundamentos01.security.services.UserDetailsImpl;
 import jakarta.validation.Valid;
 
 @RestController
@@ -63,8 +65,10 @@ public class ProductController {
      * GET /products/slice?page=0&size=5&sortBy=createdAt&direction=desc
      */
     @GetMapping("/slice")
-    public Slice<ProductResponseDto> findAllSlice(@Valid @ModelAttribute PaginationDto pagination) {
-        return service.findAllSlice(pagination);
+    public Slice<ProductResponseDto> findAllSlice(
+            @Valid @ModelAttribute PaginationDto pagination,
+            @AuthenticationPrincipal UserDetailsImpl currentUser) {
+        return service.findAllSlice(pagination, currentUser);
     }
 
     /*
@@ -77,10 +81,15 @@ public class ProductController {
 
     /*
      * POST /products
+     *
+     * El owner ya no se toma desde el body.
+     * Se obtiene desde el token JWT mediante @AuthenticationPrincipal.
      */
     @PostMapping
-    public ProductResponseDto create(@Valid @RequestBody CreateProductDto dto) {
-        return service.create(dto);
+    public ProductResponseDto create(
+            @Valid @RequestBody CreateProductDto dto,
+            @AuthenticationPrincipal UserDetailsImpl currentUser) {
+        return service.create(dto, currentUser);
     }
 
     /*
@@ -89,8 +98,9 @@ public class ProductController {
     @PutMapping("/{id}")
     public ProductResponseDto update(
             @PathVariable Long id,
-            @Valid @RequestBody UpdateProductDto dto) {
-        return service.update(id, dto);
+            @Valid @RequestBody UpdateProductDto dto,
+            @AuthenticationPrincipal UserDetailsImpl currentUser) {
+        return service.update(id, dto, currentUser);
     }
 
     /*
@@ -99,16 +109,19 @@ public class ProductController {
     @PatchMapping("/{id}")
     public ProductResponseDto partialUpdate(
             @PathVariable Long id,
-            @Valid @RequestBody PartialUpdateProductDto dto) {
-        return service.partialUpdate(id, dto);
+            @Valid @RequestBody PartialUpdateProductDto dto,
+            @AuthenticationPrincipal UserDetailsImpl currentUser) {
+        return service.partialUpdate(id, dto, currentUser);
     }
 
     /*
      * DELETE /products/{id}
      */
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id) {
-        service.delete(id);
+    public void delete(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetailsImpl currentUser) {
+        service.delete(id, currentUser);
     }
 
     /*

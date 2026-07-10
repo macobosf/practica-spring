@@ -104,6 +104,21 @@ public interface ProductRepository extends JpaRepository<ProductEntity, Long> {
     Slice<ProductEntity> findActiveSlice(Pageable pageable);
 
     /*
+     * Consulta productos activos de un único owner usando Slice.
+     *
+     * Se usa para que cada usuario vea solo sus propios productos
+     * en el endpoint paginado tipo Slice, filtrando en el repositorio
+     * en lugar de filtrar en memoria dentro del servicio.
+     */
+    @Query("""
+            SELECT p
+            FROM ProductEntity p
+            WHERE p.deleted = false
+              AND p.owner.id = :ownerId
+            """)
+    Slice<ProductEntity> findActiveSliceByOwner(@Param("ownerId") Long ownerId, Pageable pageable);
+
+    /*
      * Busca productos activos de una categoría aplicando filtros opcionales,
      * usando Page.
      */
