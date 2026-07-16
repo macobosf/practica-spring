@@ -1,0 +1,36 @@
+# ============== PERFIL: PRODUCCIÓN ==============
+#
+# Todas las credenciales se leen desde variables de entorno.
+# No hay valores por defecto para datos sensibles: si faltan,
+# el arranque debe fallar en lugar de usar un valor inseguro.
+#
+# La URL se arma a partir de host/puerto/nombre por separado (en vez
+# de una sola variable DATABASE_URL) porque la mayoría de proveedores
+# managed de PostgreSQL (Render, Railway) exponen esos datos como
+# propiedades sueltas, no como una URL con el prefijo jdbc: ya listo.
+spring:
+    datasource:
+        url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+        hikari:
+            maximum-pool-size: 10
+            minimum-idle: 5
+            connection-timeout: 20000
+    jpa:
+        show-sql: false
+        hibernate:
+            # No usar create/update en producción: solo valida que el esquema
+            # coincida con las entidades. JPA_DDL_AUTO permite sobreescribirlo
+            # a "update" únicamente para el primer arranque local con Docker
+            # Compose, donde no existe todavía un esquema previo.
+            ddl-auto: ${JPA_DDL_AUTO:validate}
+
+server:
+    error:
+        include-stacktrace: never
+
+logging:
+    level:
+        root: WARN
+        ec.edu.ups.icc.fundamentos01: INFO

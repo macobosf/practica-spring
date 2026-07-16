@@ -1,0 +1,39 @@
+# Gradle
+build/
+.gradle/
+bin/
+gradle-app.setting
+.gradletasknamecache
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs y recursos que no debe llevar la imagen
+README.md
+HELP.md
+assets/
+files/

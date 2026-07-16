@@ -1,0 +1,55 @@
+# Blueprint de Render — https://render.com
+#
+# Uso:
+# 1. Hacer push de este repositorio a GitHub.
+# 2. En Render Dashboard: New -> Blueprint -> conectar el repositorio.
+# 3. Render detecta este archivo automáticamente y crea ambos servicios.
+#
+# Nota sobre la base de datos: Render expone host/puerto/nombre/usuario/
+# password de la base de datos como propiedades separadas (no como una
+# única DATABASE_URL con prefijo jdbc:), por eso application-prod.yml
+# arma la URL JDBC a partir de DB_HOST/DB_PORT/DB_NAME.
+services:
+  - type: pserv
+    name: fundamentos01-db
+    env: docker
+    plan: free
+    databases:
+      - name: fundamentos01_db
+        user: fundamentos01_user
+
+  - type: web
+    name: fundamentos01-api
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_HOST
+        fromDatabase:
+          name: fundamentos01-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: fundamentos01-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: fundamentos01-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: fundamentos01-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: fundamentos01-db
+          property: password
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRATION
+        value: 1800000
+      - key: JWT_REFRESH_EXPIRATION
+        value: 604800000

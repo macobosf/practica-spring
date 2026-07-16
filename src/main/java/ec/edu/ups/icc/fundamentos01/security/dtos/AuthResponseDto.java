@@ -11,6 +11,13 @@ public class AuthResponseDto {
 
     private String token;
 
+    /*
+     * refreshToken:
+     * - se usa solo en /auth/refresh y /auth/logout
+     * - no debe usarse para consumir endpoints protegidos
+     */
+    private String refreshToken;
+
     private String type = "Bearer";
 
     private Long userId;
@@ -26,12 +33,14 @@ public class AuthResponseDto {
 
     public AuthResponseDto(
             String token,
+            String refreshToken,
             Long userId,
             String name,
             String email,
             Set<String> roles
     ) {
         this.token = token;
+        this.refreshToken = refreshToken;
         this.userId = userId;
         this.name = name;
         this.email = email;
@@ -44,6 +53,14 @@ public class AuthResponseDto {
 
     public void setToken(String token) {
         this.token = token;
+    }
+
+    public String getRefreshToken() {
+        return refreshToken;
+    }
+
+    public void setRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
     }
 
     public String getType() {

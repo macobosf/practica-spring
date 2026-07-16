@@ -1,19 +1,17 @@
 server:
-    port: 8080
+    port: ${PORT:8080}
     servlet:
         context-path: /api
+    error:
+        include-message: always
 
 spring:
     application:
         name: fundamentos01
-    datasource:
-        url: jdbc:postgresql://localhost:5433/devdb
-        username: ups
-        password: ups123
+    profiles:
+        active: ${SPRING_PROFILES_ACTIVE:dev}
     jpa:
         open-in-view: false
-        hibernate:
-            ddl-auto: update
         properties:
             hibernate:
                 format_sql: true
@@ -22,18 +20,31 @@ spring:
 jwt:
     # Secret key para firmar tokens (EN PRODUCCIÓN USAR VARIABLE DE ENTORNO)
     secret: ${JWT_SECRET:mySecretKeyForJWT2024MustBeAtLeast256BitsLongForHS256Algorithm}
-    
+
     # Tiempo de expiración del access token (30 minutos)
-    expiration: 1800000  # 30 minutos en milisegundos
-    
+    expiration: ${JWT_EXPIRATION:1800000}
+
     # Tiempo de expiración del refresh token (7 días)
-    refresh-expiration: 604800000  # 7 días en milisegundos
-    
+    refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+
     # Issuer del token
     issuer: fundamentos01-api
-    
+
     # Header donde se envía el token
     header: Authorization
-    
+
     # Prefijo del token
     prefix: "Bearer "
+
+# ============== ACTUATOR (HEALTH CHECKS) ==============
+management:
+    endpoints:
+        web:
+            exposure:
+                include: health,info,metrics
+    endpoint:
+        health:
+            show-details: when-authorized
+    health:
+        db:
+            enabled: true
