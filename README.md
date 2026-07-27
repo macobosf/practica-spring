@@ -20,6 +20,7 @@
 - [Práctica 6 — Validación de DTOs y control de datos de entrada](#práctica-6--validación-de-dtos-y-control-de-datos-de-entrada)
 - [Práctica 14 — Refresh Token con JWT](#práctica-14--refresh-token-con-jwt)
 - [Práctica 15 — Despliegue en Producción](#práctica-15--despliegue-en-producción)
+- [Práctica 16 — Docker en Ubuntu Server (adaptado a Ubuntu nativo)](#práctica-16--docker-en-ubuntu-server-adaptado-a-ubuntu-nativo)
 - [Autor](#autor)
 
 ---
@@ -1417,6 +1418,215 @@ En desarrollo es cómodo que Hibernate cree o modifique las tablas automáticame
 ### Por qué una imagen Docker multi-stage y no una sola etapa
 
 Si se compilara dentro de la misma imagen que corre en producción, esa imagen final incluiría Gradle, el código fuente completo y todo el caché de dependencias de compilación — información y peso que no aportan nada en runtime y aumentan la superficie de ataque. Separar en dos etapas (`builder` con JDK completo, y una imagen final solo con JRE Alpine) permite descartar todo lo que solo sirvió para compilar. El resultado medido en este proyecto fue una imagen de 186 MB, muy por debajo de lo que pesaría incluir Gradle y el código fuente.
+
+---
+
+# Práctica 16 — Docker en Ubuntu Server (adaptado a Ubuntu nativo)
+
+## Objetivo
+
+Seguir la guía de despliegue en Ubuntu Server con Docker (construcción manual de la imagen sin Docker Compose, red privada, y Nginx como único punto de entrada), adaptándola a una máquina con Ubuntu nativo en lugar de una VM en VirtualBox. Los pasos de despliegue en Render que propone la guía original quedan fuera de esta práctica por corresponder a otro ejercicio.
+
+---
+
+## Lo que se implementó
+
+### 1. Adaptación de la guía a Ubuntu nativo (sin VirtualBox)
+
+La guía original asume dos máquinas separadas conectadas por red Host-Only: el **HOST** (`192.168.56.1`) y el **Ubuntu Server** (`192.168.56.2`) dentro de una VM, comunicadas por SSH. Al tener Ubuntu nativo, ambos roles son la misma máquina, así que:
+
+- No se necesita VM, SSH ni IP de red Host-Only: todo se resuelve contra `localhost`.
+- No se instala Docker Engine porque ya estaba disponible.
+- La base de datos PostgreSQL no se instala nativa ni se reconfigura `pg_hba.conf`/`postgresql.conf` para aceptar conexiones remotas (sección 9 de la guía): ya existía un contenedor Docker propio, `postgres-dev` (imagen `postgres:16`, con `POSTGRES_DB=devdb`, `POSTGRES_USER=ups`), así que se reutilizó conectándolo a la misma red Docker que la API, en vez de crear un Postgres nuevo.
+
+### 2. Variables de entorno para el contenedor (`.env.docker`)
+
+Equivalente al `.env.ubuntu` de la guía, con el perfil `prod` y `DATABASE_URL` apuntando al contenedor de Postgres por su nombre (resolución DNS interna de Docker, no por IP):
+
+```
+SPRING_PROFILES_ACTIVE=prod
+PORT=8080
+DATABASE_URL=jdbc:postgresql://postgres-dev:5432/devdb
+DB_USERNAME=ups
+DB_PASSWORD=ups123
+JPA_DDL_AUTO=validate
+JWT_SECRET=********（256 bits generados con openssl rand）
+JWT_EXPIRATION=1800000
+JWT_REFRESH_EXPIRATION=604800000
+JWT_ISSUER=fundamentos01-api
+```
+
+Protegido con `chmod 600 .env.docker` y excluido de Git (`.gitignore`) y de la imagen (`.dockerignore`).
+
+### 3. `.dockerignore` corregido
+
+El `.dockerignore` ya existente no excluía los archivos `.env*`, lo que habría permitido copiarlos dentro de la imagen si el `Dockerfile` alguna vez hiciera un `COPY . .`. Se agregó:
+
+```
+# Variables y secretos
+.env
+.env.*
+```
+
+### 4. Build de la imagen sin Docker Compose
+
+```bash
+docker buildx build --pull --progress=plain --load -t fundamentos-api:1.0 .
+```
+
+Reutiliza el `Dockerfile` multi-stage ya existente (Práctica 15), con `eclipse-temurin:25-jdk-alpine` para compilar y `25-jre-alpine` para runtime.
+
+### 5. Red privada `app-network`
+
+```bash
+docker network create app-network
+docker network connect app-network postgres-dev
+```
+
+`postgres-dev` pasó a tener una segunda interfaz en `app-network`, sin dejar de estar en la red `bridge` por defecto donde ya lo usa el resto del entorno de desarrollo local.
+
+### 6. API sin Docker Compose (`docker run` directo)
+
+Primero se corrió con el puerto publicado para verificar el flujo completo:
+
+```bash
+docker run -d \
+  --name fundamentos-api \
+  --network app-network \
+  --env-file .env.docker \
+  -p 8080:8080 \
+  fundamentos-api:1.0
+```
+
+### 7. Nginx como único punto de entrada
+
+Se creó `nginx/default.conf` con un `upstream` hacia `fundamentos-api:8080` (resuelto por DNS interno de Docker) y proxy para `/api/`:
+
+```nginx
+upstream spring_backend {
+    server fundamentos-api:8080;
+    keepalive 16;
+}
+
+server {
+    listen 80;
+    location = /api/actuator/health {
+        proxy_pass http://spring_backend;
+    }
+    location /api/ {
+        proxy_pass http://spring_backend;
+        proxy_http_version 1.1;
+    }
+}
+```
+
+Luego se recreó la API **sin** publicar el puerto 8080 al host, dejándolo accesible solo dentro de `app-network`, y Nginx quedó como único servicio publicado en el puerto 80:
+
+```bash
+docker rm -f fundamentos-api
+docker run -d --name fundamentos-api --network app-network --env-file .env.docker fundamentos-api:1.0
+
+docker run -d \
+  --name nginx \
+  --network app-network \
+  -p 80:80 \
+  -v "$(pwd)/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro" \
+  nginx:alpine
+```
+
+---
+
+## Evidencias — Práctica 16
+
+### 41. Build de la imagen
+
+```
+#18 [builder 8/8] RUN ./gradlew bootJar -x test --no-daemon
+#18 61.34 BUILD SUCCESSFUL in 1m 1s
+#21 naming to docker.io/library/fundamentos-api:1.0 done
+
+$ docker images fundamentos-api
+IMAGE                 ID             DISK USAGE   CONTENT SIZE
+fundamentos-api:1.0   508ac8d42c03        550MB          192MB
+```
+
+### 42. API conectada al Postgres en Docker (perfil `prod`)
+
+```
+$ docker logs fundamentos-api
+Started Fundamentos01Application in 4.672 seconds (process running for 4.992)
+
+$ docker inspect --format='{{json .State.Health}}' fundamentos-api
+{"Status":"healthy", ...}
+
+$ curl http://localhost:8080/api/actuator/health
+{"groups":["liveness","readiness"],"status":"UP"}
+
+$ curl -o /dev/null -w "%{http_code}\n" http://localhost:8080/api/products
+401
+```
+
+### 43. Nginx como reverse proxy, API sin puerto expuesto
+
+```
+$ docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+NAMES             STATUS                    PORTS
+nginx             Up (healthy)              0.0.0.0:80->80/tcp
+fundamentos-api   Up (healthy)              8080/tcp
+postgres-dev      Up                        0.0.0.0:5433->5432/tcp
+
+$ docker exec nginx nginx -t
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+
+$ curl http://localhost
+Nginx activo
+
+$ curl http://localhost/api/actuator/health
+{"groups":["liveness","readiness"],"status":"UP"}
+
+$ curl -i http://localhost/api/products
+HTTP/1.1 401
+```
+
+`fundamentos-api` ya no tiene ningún puerto publicado al host (`8080/tcp` sin el mapeo `0.0.0.0:8080->`) — solo es alcanzable a través de Nginx en el puerto 80, igual que describe la guía para el flujo `Cliente → Ubuntu:80 → Nginx → API:8080`.
+
+![docker ps — nginx, fundamentos-api y postgres-dev corriendo juntos](assets/p16-docker-ps.png)
+
+![Health check de la API a través de Nginx, visto desde el navegador](assets/p16-health-browser.png)
+
+### 44. Resolución DNS interna entre contenedores
+
+```
+$ docker exec nginx getent hosts fundamentos-api
+172.18.0.3        fundamentos-api
+
+$ docker network inspect app-network --format '{{json .Containers}}'
+{"...":{"Name":"postgres-dev", ...}, "...":{"Name":"fundamentos-api", ...}, "...":{"Name":"nginx", ...}}
+```
+
+### 45. Consumo autenticado de la API a través de Nginx (Swagger)
+
+Login vía `POST /auth/login` en Swagger, uso del `token` recibido con **Authorize**, y consumo de `GET /products/page` — todo el tráfico pasa por Nginx en el puerto 80, no directo a la API:
+
+![GET /products/page autenticado con Bearer token, respondido con 200 a través de Nginx](assets/p16-swagger-authenticated.png)
+
+La URL de la petición (`http://localhost/api/products/page?...`) confirma que Swagger UI está consumiendo la API a través de Nginx y no de un puerto directo, y la respuesta `200` con el listado de productos confirma que el token generado en el login fue aceptado por el filtro JWT.
+
+---
+
+## Explicación personal — Práctica 16
+
+### Por qué no hizo falta una VM ni IPs de red Host-Only
+
+Todo el propósito de las direcciones `192.168.56.1`/`192.168.56.2` en la guía original es simular dos máquinas distintas: el HOST donde vive Postgres, y el Ubuntu Server donde corre el contenedor. En Ubuntu nativo esas dos máquinas son la misma, así que cualquier tráfico "entre HOST y Ubuntu Server" en la guía es simplemente tráfico dentro de la misma máquina, resoluble con `localhost`. Forzar una VM solo para replicar la guía al pie de la letra habría añadido una capa de complejidad (red Host-Only, SSH, sincronizar el repo dentro de la VM) sin aportar nada al aprendizaje de Docker en sí.
+
+### Por qué se reutilizó `postgres-dev` en vez de seguir la sección 9 de la guía
+
+La sección 9 de la guía resuelve un problema que aquí no existe: cómo hacer que un contenedor alcance un Postgres que corre **fuera** de Docker, en el HOST. Como la base ya estaba en un contenedor Docker (`postgres-dev`), bastó con conectarlo a la misma red definida por el usuario (`app-network`) para que Docker resolviera su nombre por DNS interno — el mismo mecanismo que la guía usa en su "alternativa de contingencia" (sección 9.6, Postgres en Docker) en vez del enfoque principal con `pg_hba.conf`.
+
+### Por qué se quitó la publicación directa del puerto 8080 al agregar Nginx
+
+Mientras se probaba que la API funcionara, tenerla publicada en `8080` directo al host era útil para aislar errores sin depender de Nginx. Una vez confirmado que el proxy funciona, dejar `8080` publicado además de Nginx en `80` significaría dos caminos de entrada a la misma aplicación — uno sin las reglas que eventualmente se agreguen en Nginx (rate limiting, TLS, cabeceras). Quitar el `-p 8080:8080` y recrear el contenedor solo con `--network app-network` deja a Nginx como único punto de entrada real, que es el estado que tendría un despliegue real.
 
 ---
 

@@ -8,29 +8,36 @@
 # de una sola variable DATABASE_URL) porque la mayoría de proveedores
 # managed de PostgreSQL (Render, Railway) exponen esos datos como
 # propiedades sueltas, no como una URL con el prefijo jdbc: ya listo.
+server:
+    port: ${PORT}
+    servlet:
+        context-path: /api
+
 spring:
     datasource:
-        url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+        url: ${DATABASE_URL}
         username: ${DB_USERNAME}
         password: ${DB_PASSWORD}
         hikari:
-            maximum-pool-size: 10
-            minimum-idle: 5
-            connection-timeout: 20000
-    jpa:
-        show-sql: false
-        hibernate:
-            # No usar create/update en producción: solo valida que el esquema
-            # coincida con las entidades. JPA_DDL_AUTO permite sobreescribirlo
-            # a "update" únicamente para el primer arranque local con Docker
-            # Compose, donde no existe todavía un esquema previo.
-            ddl-auto: ${JPA_DDL_AUTO:validate}
+            maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+            minimum-idle: ${DB_POOL_MIN_IDLE:2}
+            connection-timeout: ${DB_CONNECTION_TIMEOUT:20000}
 
-server:
-    error:
-        include-stacktrace: never
+    jpa:
+        show-sql: ${JPA_SHOW_SQL}
+        hibernate:
+            ddl-auto: ${JPA_DDL_AUTO}
 
 logging:
     level:
-        root: WARN
-        ec.edu.ups.icc.fundamentos01: INFO
+        root: ${ROOT_LOG_LEVEL:WARN}
+        ec.edu.ups.icc.fundamentos01: ${APP_LOG_LEVEL:INFO}
+
+jwt:
+    secret: ${JWT_SECRET}
+    expiration: ${JWT_EXPIRATION}
+    refresh-expiration: ${JWT_REFRESH_EXPIRATION}
+    issuer: ${JWT_ISSUER}
+    header: Authorization
+    prefix: "Bearer "
+

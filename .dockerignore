@@ -25,6 +25,10 @@ Dockerfile
 docker-compose.yml
 .dockerignore
 
+# Variables y secretos
+.env
+.env.*
+
 # Logs
 *.log
 
